@@ -1,0 +1,120 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "sensor-data",
+                "options": {}
+            },
+            "name": "Sensor Data Ingest",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "model": "gpt-4",
+                "prompt": "Analyze the following sensor data: {{ $json.body }}. Return JSON with keys: risk_score, reason, action_needed."
+            },
+            "name": "AI Analysis Agent",
+            "type": "n8n-nodes-base.openAi",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.risk_score }}",
+                            "operation": "larger",
+                            "value2": 80
+                        }
+                    ]
+                }
+            },
+            "name": "Check Risk Level",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "channel": "#maintenance-team",
+                "text": "URGENT: Machine {{ $node[\"Sensor Data Ingest\"].json.body.machine_id }} failure risk: {{ $json.risk_score }}%"
+            },
+            "name": "Slack Alert",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 1,
+            "position": [
+                850,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "sheetId": "12345",
+                "range": "A:D"
+            },
+            "name": "Log Data",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 1,
+            "position": [
+                850,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Sensor Data Ingest": {
+            "main": [
+                [
+                    {
+                        "node": "AI Analysis Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Analysis Agent": {
+            "main": [
+                [
+                    {
+                        "node": "Check Risk Level",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Risk Level": {
+            "main": [
+                [
+                    {
+                        "node": "Slack Alert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Log Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
